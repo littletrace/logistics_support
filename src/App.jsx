@@ -122,10 +122,21 @@ function App() {
       const ws = wb.Sheets[wsname];
       const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-      if (rawData.length <= 1) return;
+      if (rawData.length <= 1) {
+        alert("데이터가 없는 빈 파일입니다.");
+        return;
+      }
 
-      // 헤더 추출 및 데이터 행(Row)만 분리
-      const headers = rawData[0];
+      // 헤더 추출 및 양식 유효성 검사
+      const headers = rawData[0] || [];
+      const headerStr = headers.join('').replace(/\s/g, '');
+      
+      if (!headerStr.includes('품목') || !headerStr.includes('판매No')) {
+        alert("올바른 양식의 엑셀 파일이 아닙니다.\n이카운트 '물표미발행' 전용 양식을 다운로드하여 업로드해 주세요.");
+        return;
+      }
+
+      // 데이터 행(Row)만 분리
       let rows = rawData.slice(1).filter(row => row && row.length > 0 && row[0]);
 
       // A:0(일자-No), B:1(번호), C:2(일자), D:3(품목코드), E:4(품목명), F:5(수량), H:7(특이사항)
