@@ -127,17 +127,23 @@ function App() {
         return;
       }
 
-      // 헤더 추출 및 양식 유효성 검사
-      const headers = rawData[0] || [];
-      const headerStr = headers.join('').replace(/\s/g, '');
+      // 헤더 추출 및 양식 유효성 검사 (첫 번째 줄이 회사명일 수 있으므로 상위 5줄 탐색)
+      let headerRowIndex = -1;
+      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+        const rowStr = (rawData[i] || []).join('').replace(/\s/g, '');
+        if (rowStr.includes('품목') && rowStr.includes('판매No')) {
+          headerRowIndex = i;
+          break;
+        }
+      }
       
-      if (!headerStr.includes('품목') || !headerStr.includes('판매No')) {
+      if (headerRowIndex === -1) {
         alert("올바른 양식의 엑셀 파일이 아닙니다.\n이카운트 '물표미발행' 전용 양식을 다운로드하여 업로드해 주세요.");
         return;
       }
 
-      // 데이터 행(Row)만 분리
-      let rows = rawData.slice(1).filter(row => row && row.length > 0 && row[0]);
+      // 데이터 행(Row)만 분리 (헤더 다음 줄부터)
+      let rows = rawData.slice(headerRowIndex + 1).filter(row => row && row.length > 0 && row[0]);
 
       // A:0(일자-No), B:1(번호), C:2(일자), D:3(품목코드), E:4(품목명), F:5(수량), H:7(특이사항)
       // I:8(카톤수량), J:9(수신자명), L:11(거래처명), M:12(연락처), N:13(우편번호)
