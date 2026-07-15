@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/gsheets",
+      "destination": "https://docs.google.com/spreadsheets/d/1u6_lPc_snviUn0Yu3PeJiJV_spWoNeJp11AcxfbEF3c/export?format=xlsx"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
