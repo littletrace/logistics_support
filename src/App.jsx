@@ -376,7 +376,7 @@ function App() {
       </header>
 
       {orders.length === 0 ? (
-        <div className="glass-panel no-print" style={{ position: 'relative' }}>
+        <div className="glass-panel no-print" style={{ position: 'relative', maxWidth: '800px', width: '100%', margin: '0 auto' }}>
           {!isMappingLoaded && (
             <div style={{ position: 'absolute', top: '10px', right: '15px', display: 'flex', alignItems: 'center', gap: '6px', color: '#fbbf24', fontSize: '0.9rem' }}>
               <Database size={16} />
