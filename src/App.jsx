@@ -218,7 +218,7 @@ function App() {
       // Map 객체를 Array 형태로 정리 및 카톤/낱량 계산
       const processedOrders = Array.from(ordersMap.values()).map(order => {
         const itemList = Array.from(order.items.values()).map(it => {
-          const c = it.cartonUnit > 0 ? Math.floor(it.qty / it.cartonUnit) : 0;
+          const c = it.cartonUnit > 0 ? Math.trunc(it.qty / it.cartonUnit) : 0;
           const p = it.cartonUnit > 0 ? it.qty % it.cartonUnit : it.qty;
           return {
             ecountCode: it.ecountCode,
