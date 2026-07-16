@@ -10,6 +10,11 @@ export default defineConfig({
         target: 'https://docs.google.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/gsheets/, '/spreadsheets/d/1u6_lPc_snviUn0Yu3PeJiJV_spWoNeJp11AcxfbEF3c/export?format=xlsx')
+      },
+      '/api/kakao': {
+        target: 'https://dapi.kakao.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/kakao/, '')
       }
     }
   }
