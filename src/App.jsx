@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { UploadCloud, FileText, Download, Printer, RefreshCw, Database } from 'lucide-react';
 import './App.css';
 
@@ -310,7 +311,7 @@ function App() {
     XLSX.writeFile(wb, '송장발행_업로드용.xlsx');
   };
 
-  const handleItemSummaryDownload = () => {
+  const handleItemSummaryDownload = async () => {
     const header = ['이카운트코드', '영림원코드', '주문번호', '거래처', '수취인', '품목명', '수량', '카톤', '잔량', '', '수량', '카톤', '잔량'];
     const exportData = combinedRows.map(r => [
       r.ecountCode,
@@ -327,11 +328,32 @@ function App() {
       r.sumCarton,
       r.sumPiece
     ]);
-    const ws = XLSX.utils.aoa_to_sheet([header, ...exportData]);
-    ws['!cols'] = getAutoColWidths([header, ...exportData]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '품목별수량');
-    XLSX.writeFile(wb, '품목별수량.xlsx');
+    const allRows = [header, ...exportData];
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('품목별수량');
+    allRows.forEach(row => ws.addRow(row));
+    ws.columns = getAutoColWidths(allRows).map(c => ({ width: c.wch }));
+
+    // 내용이 있는 셀에만 테두리 + 채우기(흰색, 배경1, 15% 더 어둡게 = #D9D9D9)
+    const thinBorder = { style: 'thin', color: { argb: 'FF000000' } };
+    ws.eachRow(row => {
+      row.eachCell({ includeEmpty: true }, cell => {
+        if (cell.value !== '' && cell.value !== null && cell.value !== undefined) {
+          cell.border = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
+        }
+      });
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '품목별수량.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const itemSummary = useMemo(() => {
