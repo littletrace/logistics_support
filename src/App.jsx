@@ -582,10 +582,7 @@ function App() {
                   <div
                     className="print-page-number"
                     style={{
-                      position: 'fixed',
-                      bottom: '10mm',
-                      left: 0,
-                      right: 0,
+                      marginTop: '10px',
                       textAlign: 'center',
                       fontSize: '11px',
                       color: 'black',
