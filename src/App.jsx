@@ -43,6 +43,23 @@ function formatPhoneNumber(val) {
   return val;
 }
 
+// 셀 내용 길이에 맞춰 엑셀 열 너비(!cols)를 계산 (한글/한자 등 전각 문자는 2칸으로 가중)
+function getAutoColWidths(rows) {
+  const colCount = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const widths = new Array(colCount).fill(0);
+  rows.forEach(row => {
+    row.forEach((cell, i) => {
+      const str = cell === null || cell === undefined ? '' : String(cell);
+      let len = 0;
+      for (const ch of str) {
+        len += /[ㄱ-힝一-鿿＀-￯]/.test(ch) ? 2 : 1;
+      }
+      if (len > widths[i]) widths[i] = len;
+    });
+  });
+  return widths.map(w => ({ wch: w + 2 }));
+}
+
 function App() {
   const [orders, setOrders] = useState([]);
   const [isMappingLoaded, setIsMappingLoaded] = useState(false);
@@ -311,6 +328,7 @@ function App() {
       r.sumPiece
     ]);
     const ws = XLSX.utils.aoa_to_sheet([header, ...exportData]);
+    ws['!cols'] = getAutoColWidths([header, ...exportData]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '품목별수량');
     XLSX.writeFile(wb, '품목별수량.xlsx');
