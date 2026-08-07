@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import { UploadCloud, FileText, Download, Printer, RefreshCw, Database, AlertTriangle, MapPin, CheckCircle } from 'lucide-react';
+import { UploadCloud, FileText, Download, Printer, RefreshCw, Database } from 'lucide-react';
 import './App.css';
 
 function formatExcelDate(val) {
@@ -49,67 +49,18 @@ function App() {
   const [mappingDict, setMappingDict] = useState({});
   const [cartonDict, setCartonDict] = useState({});
   const [loadingMsg, setLoadingMsg] = useState('데이터를 불러오는 중...');
-  const [addressStatus, setAddressStatus] = useState({}); // { orderNo: 'valid' | 'invalid' | 'checking' }
-  const [isValidating, setIsValidating] = useState(false);
-  const KAKAO_KEY = import.meta.env.VITE_KAKAO_REST_KEY;
 
-  // 카카오 로컬 API로 주소 유효성 검증
-  const validateAddresses = useCallback(async (orderList) => {
-    if (!KAKAO_KEY || orderList.length === 0) return;
-    setIsValidating(true);
-    const status = {};
-    orderList.forEach(o => { status[o.orderNo] = 'checking'; });
-    setAddressStatus({ ...status });
-
-    const isDev = import.meta.env.DEV;
-
-    for (const order of orderList) {
-      const addr = (order.address || '').trim();
-      if (!addr || addr.length < 5) {
-        status[order.orderNo] = 'invalid';
-        setAddressStatus({ ...status });
-        continue;
-      }
-      try {
-        let res;
-        if (isDev) {
-          // 개발환경: Vite 프록시 경유
-          res = await fetch(
-            `/api/kakao/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
-            { headers: { Authorization: `KakaoAK ${KAKAO_KEY}` } }
-          );
-        } else {
-          // 프로덕션(Vercel): Serverless Function 경유
-          res = await fetch(`/api/kakao-address?query=${encodeURIComponent(addr)}`);
-        }
-        const data = await res.json();
-        status[order.orderNo] = (data.documents && data.documents.length > 0) ? 'valid' : 'invalid';
-      } catch {
-        status[order.orderNo] = 'invalid';
-      }
-      setAddressStatus({ ...status });
-      // Rate limit 방지 (0.1초 간격)
-      await new Promise(r => setTimeout(r, 100));
-    }
-    setIsValidating(false);
-  }, [KAKAO_KEY]);
-
-  // 다음 우편번호 팝업으로 주소 수정
-  const handleFixAddress = useCallback((orderNo) => {
-    if (!window.daum || !window.daum.Postcode) {
-      alert('주소 검색 스크립트가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
-      return;
-    }
-    new window.daum.Postcode({
-      oncomplete: (data) => {
-        const fullAddr = data.roadAddress || data.jibunAddress;
-        const zipCode = data.zonecode;
-        setOrders(prev => prev.map(o =>
-          o.orderNo === orderNo ? { ...o, address: fullAddr, zipCode } : o
-        ));
-        setAddressStatus(prev => ({ ...prev, [orderNo]: 'valid' }));
-      }
-    }).open();
+  // 인쇄 시 브라우저 기본 머리글(제목)에 "webapp"이 찍히지 않도록 임시로 제목 비우기
+  useEffect(() => {
+    const originalTitle = document.title;
+    const clearTitle = () => { document.title = ''; };
+    const restoreTitle = () => { document.title = originalTitle; };
+    window.addEventListener('beforeprint', clearTitle);
+    window.addEventListener('afterprint', restoreTitle);
+    return () => {
+      window.removeEventListener('beforeprint', clearTitle);
+      window.removeEventListener('afterprint', restoreTitle);
+    };
   }, []);
 
   // 1. 마스터 데이터(품목관계) 구글 시트에서 가져오기
@@ -299,10 +250,9 @@ function App() {
       });
 
       setOrders(processedOrders);
-      validateAddresses(processedOrders);
     };
     reader.readAsBinaryString(file);
-  }, [isMappingLoaded, mappingDict, validateAddresses]);
+  }, [isMappingLoaded, mappingDict]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -446,12 +396,7 @@ function App() {
 
   const resetData = () => {
     setOrders([]);
-    setAddressStatus({});
-    setIsValidating(false);
   };
-
-  const invalidCount = Object.values(addressStatus).filter(s => s === 'invalid').length;
-  const checkingCount = Object.values(addressStatus).filter(s => s === 'checking').length;
 
   return (
     <div className="app-container">
@@ -515,68 +460,6 @@ function App() {
               새로운 파일 처리하기
             </button>
           </div>
-
-          {/* 주소 검증 결과 패널 */}
-          {(isValidating || invalidCount > 0) && (
-            <div className="glass-panel no-print" style={{ marginTop: '1rem', border: invalidCount > 0 ? '1px solid #f87171' : '1px solid #fbbf24' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: invalidCount > 0 ? '0.8rem' : 0 }}>
-                {isValidating ? (
-                  <>
-                    <MapPin size={18} style={{ color: '#fbbf24', animation: 'pulse 1.5s infinite' }} />
-                    <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>주소 검증 중... ({checkingCount}건 남음)</span>
-                  </>
-                ) : invalidCount > 0 ? (
-                  <>
-                    <AlertTriangle size={18} style={{ color: '#f87171' }} />
-                    <span style={{ color: '#f87171', fontWeight: 'bold' }}>⚠️ 주소 확인 필요: {invalidCount}건</span>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginLeft: '8px' }}>카카오 주소 DB에서 찾을 수 없는 주소입니다. [주소 수정] 버튼을 눌러 올바른 주소로 변경해 주세요.</span>
-                  </>
-                ) : null}
-              </div>
-              {!isValidating && invalidCount > 0 && (
-                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca' }}>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', width: '120px' }}>주문번호</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left', width: '100px' }}>수취인</th>
-                        <th style={{ padding: '6px 10px', textAlign: 'left' }}>현재 주소</th>
-                        <th style={{ padding: '6px 10px', width: '100px' }}>수정</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.filter(o => addressStatus[o.orderNo] === 'invalid').map(o => (
-                        <tr key={o.orderNo} style={{ borderBottom: '1px solid #fee2e2' }}>
-                          <td style={{ padding: '6px 10px', fontWeight: 'bold' }}>{o.orderNo}</td>
-                          <td style={{ padding: '6px 10px' }}>{o.recipient}</td>
-                          <td style={{ padding: '6px 10px', color: '#ef4444' }}>{o.address || '(주소 없음)'}</td>
-                          <td style={{ padding: '6px 10px', textAlign: 'center' }}>
-                            <button
-                              onClick={() => handleFixAddress(o.orderNo)}
-                              style={{
-                                padding: '4px 12px', fontSize: '0.8rem', background: '#3b82f6', color: 'white',
-                                border: 'none', borderRadius: '4px', cursor: 'pointer', whiteSpace: 'nowrap'
-                              }}
-                            >
-                              주소 수정
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 주소 검증 통과 표시 */}
-          {!isValidating && invalidCount === 0 && orders.length > 0 && Object.keys(addressStatus).length > 0 && (
-            <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '0.8rem', color: '#34d399', fontSize: '0.9rem' }}>
-              <CheckCircle size={16} />
-              <span>모든 주소가 정상적으로 확인되었습니다.</span>
-            </div>
-          )}
 
           {/* 품목별 수량 요약 테이블 */}
           <div className="glass-panel no-print" style={{ marginTop: '2rem' }}>
@@ -643,7 +526,7 @@ function App() {
               order.itemList.forEach((item, i) => { if (i < 37) rows[i] = item; });
 
               return (
-                <div key={order.orderNo} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+                <div key={order.orderNo} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box' }}>
                   <div style={{ textAlign: 'left', fontSize: '15px', marginBottom: '10px' }}>
                     &lt;주문번호&gt;&nbsp;&nbsp;&nbsp;&nbsp;{order.orderNo}
                   </div>
@@ -699,8 +582,10 @@ function App() {
                   <div
                     className="print-page-number"
                     style={{
-                      marginTop: 'auto',
-                      paddingTop: '10mm',
+                      position: 'fixed',
+                      bottom: '10mm',
+                      left: 0,
+                      right: 0,
                       textAlign: 'center',
                       fontSize: '11px',
                       color: 'black',
