@@ -526,7 +526,7 @@ function App() {
               order.itemList.forEach((item, i) => { if (i < 37) rows[i] = item; });
 
               return (
-                <div key={order.orderNo} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box' }}>
+                <div key={order.orderNo} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box', position: 'relative' }}>
                   <div style={{ textAlign: 'left', fontSize: '15px', marginBottom: '10px' }}>
                     &lt;주문번호&gt;&nbsp;&nbsp;&nbsp;&nbsp;{order.orderNo}
                   </div>
@@ -582,7 +582,10 @@ function App() {
                   <div
                     className="print-page-number"
                     style={{
-                      marginTop: '10px',
+                      position: 'absolute',
+                      bottom: '10mm',
+                      left: 0,
+                      right: 0,
                       textAlign: 'center',
                       fontSize: '11px',
                       color: 'black',

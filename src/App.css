@@ -200,6 +200,7 @@ header p {
     display: block !important;
   }
   .print-page {
+    page-break-before: always;
     page-break-after: always;
     padding: 0 !important; /* @page margin으로 대체되므로 padding 제거 */
     font-family: Arial, "맑은 고딕", "Malgun Gothic", Dotum, sans-serif;
