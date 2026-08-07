@@ -306,6 +306,7 @@ function App() {
     });
 
     const ws = XLSX.utils.aoa_to_sheet([header, ...exportData]);
+    ws['!cols'] = getAutoColWidths([header, ...exportData]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '송장발행');
     XLSX.writeFile(wb, '송장발행_업로드용.xlsx');
