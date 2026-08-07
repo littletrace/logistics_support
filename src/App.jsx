@@ -544,9 +544,10 @@ function App() {
               order.itemList.forEach((item, i) => { if (i < 37) rows[i] = item; });
 
               return (
-                <div key={order.orderNo} className="print-page" style={{ height: '267mm', width: '180mm', boxSizing: 'border-box', position: 'relative' }}>
-                  <div style={{ textAlign: 'left', fontSize: '15px', marginBottom: '10px' }}>
-                    &lt;주문번호&gt;&nbsp;&nbsp;&nbsp;&nbsp;{order.orderNo}
+                <div key={order.orderNo} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '15px', marginBottom: '10px' }}>
+                    <span>&lt;주문번호&gt;&nbsp;&nbsp;&nbsp;&nbsp;{order.orderNo}</span>
+                    <span className="print-page-number" style={{ fontSize: '11px', color: 'black' }}>{idx + 1}</span>
                   </div>
 
                   <table style={{ width: 'calc(100% - 2rem)', margin: '0 auto 10px auto', borderCollapse: 'collapse', border: '2px solid black', fontSize: '14px', marginBottom: '15px' }}>
@@ -596,21 +597,6 @@ function App() {
                       ))}
                     </tbody>
                   </table>
-
-                  <div
-                    className="print-page-number"
-                    style={{
-                      position: 'absolute',
-                      bottom: '2mm',
-                      left: 0,
-                      right: 0,
-                      textAlign: 'center',
-                      fontSize: '11px',
-                      color: 'black',
-                    }}
-                  >
-                    {idx + 1}
-                  </div>
                 </div>
               );
             })}
