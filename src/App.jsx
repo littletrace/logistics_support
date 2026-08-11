@@ -67,6 +67,9 @@ function App() {
   const [mappingDict, setMappingDict] = useState({});
   const [cartonDict, setCartonDict] = useState({});
   const [loadingMsg, setLoadingMsg] = useState('데이터를 불러오는 중...');
+  const [sheetGenState, setSheetGenState] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [sheetGenError, setSheetGenError] = useState('');
 
   // 인쇄 시 브라우저 기본 머리글(제목)에 "webapp"이 찍히지 않도록 임시로 제목 비우기
   useEffect(() => {
@@ -285,6 +288,54 @@ function App() {
     window.print();
   };
 
+  // 구글시트("물류지원-전표출력") 물표 탭에 데이터를 채워 넣고, 시트에서 직접 인쇄하도록 함
+  const handleGenerateSheet = async () => {
+    const webAppUrl = import.meta.env.VITE_SHEET_WEBAPP_URL;
+    if (!webAppUrl) {
+      setSheetGenState('error');
+      setSheetGenError('VITE_SHEET_WEBAPP_URL이 설정되지 않았습니다.');
+      return;
+    }
+
+    setSheetGenState('loading');
+    setSheetGenError('');
+
+    const payload = {
+      orders: orders.map(o => ({
+        orderNo: o.orderNo,
+        clientName: o.clientName,
+        recipient: o.recipient,
+        contact: formatPhoneNumber(o.contact),
+        date: o.date,
+        address: o.address,
+        remarks: o.remarks,
+        itemList: o.itemList.map(item => ({
+          name: item.name,
+          qty: item.qty,
+          carton: item.carton,
+          piece: item.piece
+        }))
+      }))
+    };
+
+    try {
+      const res = await fetch(webAppUrl, {
+        method: 'POST',
+        // application/json은 브라우저가 사전 요청(OPTIONS)을 보내는데
+        // Apps Script 웹 앱은 이를 처리하지 못해 실패함. text/plain으로 우회.
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
+      setSheetUrl(data.sheetUrl);
+      setSheetGenState('done');
+    } catch (err) {
+      setSheetGenState('error');
+      setSheetGenError(String(err.message || err));
+    }
+  };
+
   const handleDownload = () => {
     // 송장발행 양식 생성
     // 9개 열: 수신자명, 우편번호, 주소, 연락처1, 연락처2, 판매No(주문번호), 거래처코드, 거래처명, 판매No(주문번호)
@@ -492,6 +543,26 @@ function App() {
                 <Download size={20} />
                 송장발행 엑셀 다운로드
               </button>
+              <button className="btn btn-secondary" onClick={handleGenerateSheet} disabled={sheetGenState === 'loading'}>
+                <FileText size={20} />
+                {sheetGenState === 'loading' ? '구글시트에 쓰는 중...' : '구글시트 물표 생성'}
+              </button>
+              {sheetGenState === 'done' && sheetUrl && (
+                <a
+                  href={sheetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn"
+                  style={{ background: '#34d399', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  구글시트에서 열기 (Ctrl+P로 인쇄)
+                </a>
+              )}
+              {sheetGenState === 'error' && (
+                <div style={{ color: '#f87171', fontSize: '0.85rem' }}>
+                  구글시트 생성 실패: {sheetGenError}
+                </div>
+              )}
             </div>
           </div>
 
