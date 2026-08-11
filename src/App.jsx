@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import ExcelJS from 'exceljs';
 import { UploadCloud, FileText, Download, Printer, RefreshCw, Database } from 'lucide-react';
 import './App.css';
 
@@ -61,6 +60,24 @@ function getAutoColWidths(rows) {
   return widths.map(w => ({ wch: w + 2 }));
 }
 
+function toItemSummaryPayload(combinedRows) {
+  return combinedRows.map(r => ({
+    ecountCode: r.ecountCode,
+    younglimwonCode: r.younglimwonCode,
+    orderNo: r.orderNo,
+    clientName: r.clientName,
+    recipient: r.recipient,
+    itemName: r.itemName,
+    qty: r.qty,
+    carton: r.carton,
+    piece: r.piece,
+    sumItemName: r.sumItemName,
+    sumQty: r.sumQty,
+    sumCarton: r.sumCarton,
+    sumPiece: r.sumPiece
+  }));
+}
+
 function App() {
   const [orders, setOrders] = useState([]);
   const [isMappingLoaded, setIsMappingLoaded] = useState(false);
@@ -70,6 +87,8 @@ function App() {
   const [sheetGenState, setSheetGenState] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
   const [sheetUrl, setSheetUrl] = useState('');
   const [sheetGenError, setSheetGenError] = useState('');
+  const [summarySheetGenState, setSummarySheetGenState] = useState('idle'); // 'idle' | 'loading' | 'error'
+  const [summarySheetGenError, setSummarySheetGenError] = useState('');
 
   // 인쇄 시 브라우저 기본 머리글(제목)에 "webapp"이 찍히지 않도록 임시로 제목 비우기
   useEffect(() => {
@@ -316,21 +335,7 @@ function App() {
           piece: item.piece
         }))
       })),
-      itemSummary: combinedRows.map(r => ({
-        ecountCode: r.ecountCode,
-        younglimwonCode: r.younglimwonCode,
-        orderNo: r.orderNo,
-        clientName: r.clientName,
-        recipient: r.recipient,
-        itemName: r.itemName,
-        qty: r.qty,
-        carton: r.carton,
-        piece: r.piece,
-        sumItemName: r.sumItemName,
-        sumQty: r.sumQty,
-        sumCarton: r.sumCarton,
-        sumPiece: r.sumPiece
-      }))
+      itemSummary: toItemSummaryPayload(combinedRows)
     };
 
     try {
@@ -348,6 +353,36 @@ function App() {
     } catch (err) {
       setSheetGenState('error');
       setSheetGenError(String(err.message || err));
+    }
+  };
+
+  // 품목별수량 데이터를 구글시트 "품목별수량" 탭에 쓰고, 그 탭으로 바로 이동
+  const handleGenerateItemSummarySheet = async () => {
+    const webAppUrl = import.meta.env.VITE_SHEET_WEBAPP_URL;
+    if (!webAppUrl) {
+      setSummarySheetGenState('error');
+      setSummarySheetGenError('VITE_SHEET_WEBAPP_URL이 설정되지 않았습니다.');
+      return;
+    }
+
+    setSummarySheetGenState('loading');
+    setSummarySheetGenError('');
+
+    const payload = { orders: [], itemSummary: toItemSummaryPayload(combinedRows) };
+
+    try {
+      const res = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
+      setSummarySheetGenState('idle');
+      window.open(data.sheetUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setSummarySheetGenState('error');
+      setSummarySheetGenError(String(err.message || err));
     }
   };
 
@@ -376,51 +411,6 @@ function App() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '송장발행');
     XLSX.writeFile(wb, '송장발행_업로드용.xlsx');
-  };
-
-  const handleItemSummaryDownload = async () => {
-    const header = ['이카운트코드', '영림원코드', '주문번호', '거래처', '수취인', '품목명', '수량', '카톤', '잔량', '', '수량', '카톤', '잔량'];
-    const exportData = combinedRows.map(r => [
-      r.ecountCode,
-      r.younglimwonCode,
-      r.orderNo,
-      r.clientName,
-      r.recipient,
-      r.itemName,
-      r.qty,
-      r.carton,
-      r.piece,
-      r.sumItemName,
-      r.sumQty,
-      r.sumCarton,
-      r.sumPiece
-    ]);
-    const allRows = [header, ...exportData];
-
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('품목별수량');
-    allRows.forEach(row => ws.addRow(row));
-    ws.columns = getAutoColWidths(allRows).map(c => ({ width: c.wch }));
-
-    // 내용이 있는 셀에만 테두리 + 채우기(흰색, 배경1, 15% 더 어둡게 = #D9D9D9)
-    const thinBorder = { style: 'thin', color: { argb: 'FF000000' } };
-    ws.eachRow(row => {
-      row.eachCell({ includeEmpty: true }, cell => {
-        if (cell.value !== '' && cell.value !== null && cell.value !== undefined) {
-          cell.border = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
-        }
-      });
-    });
-
-    const buffer = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '품목별수량.xlsx';
-    a.click();
-    URL.revokeObjectURL(url);
   };
 
   const itemSummary = useMemo(() => {
@@ -592,10 +582,22 @@ function App() {
           <div className="glass-panel no-print" style={{ marginTop: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>품목별 수량 집계</h3>
-              <button className="btn btn-secondary" onClick={handleItemSummaryDownload} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', width: 'auto', display: 'flex', alignItems: 'center' }}>
-                <Download size={16} style={{ marginRight: '6px' }} />
-                품목별수량 엑셀 다운로드
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleGenerateItemSummarySheet}
+                  disabled={summarySheetGenState === 'loading'}
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', width: 'auto', display: 'flex', alignItems: 'center' }}
+                >
+                  <FileText size={16} style={{ marginRight: '6px' }} />
+                  {summarySheetGenState === 'loading' ? '구글시트에 쓰는 중...' : '구글시트에서 출력하기'}
+                </button>
+                {summarySheetGenState === 'error' && (
+                  <div style={{ color: '#f87171', fontSize: '0.8rem' }}>
+                    구글시트 생성 실패: {summarySheetGenError}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 350px)', overflowY: 'auto' }}>
