@@ -315,6 +315,21 @@ function App() {
           carton: item.carton,
           piece: item.piece
         }))
+      })),
+      itemSummary: combinedRows.map(r => ({
+        ecountCode: r.ecountCode,
+        younglimwonCode: r.younglimwonCode,
+        orderNo: r.orderNo,
+        clientName: r.clientName,
+        recipient: r.recipient,
+        itemName: r.itemName,
+        qty: r.qty,
+        carton: r.carton,
+        piece: r.piece,
+        sumItemName: r.sumItemName,
+        sumQty: r.sumQty,
+        sumCarton: r.sumCarton,
+        sumPiece: r.sumPiece
       }))
     };
 
