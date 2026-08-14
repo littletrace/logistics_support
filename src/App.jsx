@@ -387,8 +387,10 @@ function App() {
   };
 
   const handleDownload = () => {
-    // 송장발행 양식 생성 (한진택배 송장발행 양식(변경) 기준, 13개 열)
-    const header = ['수신자명', '우편번호', '우편주소 상세주소', '전화번호', '전화번호', '출고수', '', '', '', '주문번호', '거래처코드', '거래처명', ''];
+    // 송장발행 양식 생성 (한진택배 송장발행 양식(변경) 기준, 14개 열)
+    // N열은 원본 구글시트에서 =unique(filter('원본변환'!Z:Z,...))로 자동 채워지는
+    // "판매No." 목록 자리. 정적 내보내기라 J열과 같은 주문번호 값을 그대로 씀.
+    const header = ['수신자명', '우편번호', '우편주소 상세주소', '전화번호', '전화번호', '출고수', '', '', '', '주문번호', '거래처코드', '거래처명', '', '판매No.'];
 
     const exportData = orders.map(o => {
       const formattedContact = formatPhoneNumber(o.contact);
@@ -405,7 +407,8 @@ function App() {
         o.orderNo,
         o.clientCode,
         o.clientName,
-        ''
+        '',
+        o.orderNo // N열: 판매No. (J열과 동일 값)
       ];
     });
 
