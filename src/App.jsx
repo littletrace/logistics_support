@@ -387,9 +387,8 @@ function App() {
   };
 
   const handleDownload = () => {
-    // 송장발행 양식 생성
-    // 9개 열: 수신자명, 우편번호, 주소, 연락처1, 연락처2, 판매No(주문번호), 거래처코드, 거래처명, 판매No(주문번호)
-    const header = ['수신자명', '우편번호', '주소', '연락처1', '연락처2', '판매No(주문번호)', '거래처코드', '거래처명', '주문번호'];
+    // 송장발행 양식 생성 (한진택배 송장발행 양식(변경) 기준, 13개 열)
+    const header = ['수신자명', '우편번호', '우편주소 상세주소', '전화번호', '전화번호', '출고수', '', '', '', '주문번호', '거래처코드', '거래처명', ''];
 
     const exportData = orders.map(o => {
       const formattedContact = formatPhoneNumber(o.contact);
@@ -398,11 +397,15 @@ function App() {
         o.zipCode,
         o.address,
         formattedContact,
-        formattedContact, // 연락처2도 동일하게
+        formattedContact, // 전화번호 두 번째 칸도 동일하게
+        1, // 출고수는 항상 1
+        '',
+        '',
+        '',
         o.orderNo,
         o.clientCode,
         o.clientName,
-        o.orderNo  // 주문번호 다시
+        ''
       ];
     });
 
