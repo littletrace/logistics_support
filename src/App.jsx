@@ -441,7 +441,7 @@ function App() {
       });
     });
 
-    return Array.from(summary.values()).sort((a, b) => a.ecountCode.localeCompare(b.ecountCode));
+    return Array.from(summary.values()).sort((a, b) => a.younglimwonCode.localeCompare(b.younglimwonCode));
   }, [orders]);
 
   const combinedRows = useMemo(() => {
@@ -463,8 +463,8 @@ function App() {
     });
 
     allItems.sort((a, b) => {
-      if (a.ecountCode !== b.ecountCode) return a.ecountCode.localeCompare(b.ecountCode);
       if (a.younglimwonCode !== b.younglimwonCode) return a.younglimwonCode.localeCompare(b.younglimwonCode);
+      if (a.ecountCode !== b.ecountCode) return a.ecountCode.localeCompare(b.ecountCode);
       return a.orderNo.localeCompare(b.orderNo);
     });
 
