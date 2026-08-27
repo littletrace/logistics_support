@@ -270,18 +270,21 @@ function App() {
 
       // Map 객체를 Array 형태로 정리 및 카톤/낱량 계산
       const processedOrders = Array.from(ordersMap.values()).map(order => {
-        const itemList = Array.from(order.items.values()).map(it => {
-          const c = it.cartonUnit > 0 ? Math.trunc(it.qty / it.cartonUnit) : 0;
-          const p = it.cartonUnit > 0 ? it.qty % it.cartonUnit : it.qty;
-          return {
-            ecountCode: it.ecountCode,
-            younglimwonCode: it.younglimwonCode,
-            name: it.name,
-            qty: it.qty,
-            carton: c,
-            piece: p
-          };
-        });
+        const itemList = Array.from(order.items.values())
+          .map(it => {
+            const c = it.cartonUnit > 0 ? Math.trunc(it.qty / it.cartonUnit) : 0;
+            const p = it.cartonUnit > 0 ? it.qty % it.cartonUnit : it.qty;
+            return {
+              ecountCode: it.ecountCode,
+              younglimwonCode: it.younglimwonCode,
+              name: it.name,
+              qty: it.qty,
+              carton: c,
+              piece: p
+            };
+          })
+          // 전표(물표)에 찍히는 품목 순서는 영림원코드 오름차순
+          .sort((a, b) => a.younglimwonCode.localeCompare(b.younglimwonCode));
 
         return {
           ...order,
