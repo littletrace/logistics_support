@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { UploadCloud, FileText, Download, Printer, RefreshCw, Database } from 'lucide-react';
 import './App.css';
+import { addrKey, labelSplitOrders } from './orderNoGuard';
 
 function formatExcelDate(val) {
   if (!val) return '';
@@ -58,6 +59,29 @@ function getAutoColWidths(rows) {
     });
   });
   return widths.map(w => ({ wch: w + 2 }));
+}
+
+// gas/물표생성_WebApp.gs 의 GAS_VERSION과 같아야 함 (다르면 Apps Script '새 버전 배포' 누락)
+const GAS_VERSION = '2026-10-14';
+
+// 구글시트 Apps Script 웹앱에 데이터 전송 (물표/품목별수량 공용)
+async function postToSheet(payload) {
+  const webAppUrl = import.meta.env.VITE_SHEET_WEBAPP_URL;
+  if (!webAppUrl) throw new Error('VITE_SHEET_WEBAPP_URL이 설정되지 않았습니다.');
+  const res = await fetch(webAppUrl, {
+    method: 'POST',
+    // application/json은 브라우저가 사전 요청(OPTIONS)을 보내는데
+    // Apps Script 웹 앱은 이를 처리하지 못해 실패함. text/plain으로 우회.
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.version !== GAS_VERSION) {
+    alert(`구글시트 스크립트 버전이 다릅니다 (배포됨: ${data.version || '구버전'}, 필요: ${GAS_VERSION}).\n` +
+      `Apps Script에서 배포 > 배포 관리 > 새 버전으로 다시 배포해 주세요.`);
+  }
+  if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
+  return data;
 }
 
 function toItemSummaryPayload(combinedRows) {
@@ -231,12 +255,15 @@ function App() {
         // 카톤 단위는 마스터데이터(품목리스트) 최우선 적용, 없으면 업로드 파일의 값(row[8]) 사용
         const cartonUnit = cartonDict[transformedEcountCode] || cartonDict[originalItemCode] || Number(row[8]) || 0;
 
+        // 판매No. 중복 안전장치: 같은 판매No.라도 주소가 다르면 별도 주문(물표)으로 분리
+        const mapKey = `${orderNo}|${addrKey(row[14])}`;
+
         // 기존 주문 존재 확인
-        if (!ordersMap.has(orderNo)) {
+        if (!ordersMap.has(mapKey)) {
           let contact = String(row[12] || '').trim();
           if (contact && !contact.startsWith('0') && contact.length >= 9) contact = '0' + contact;
 
-          ordersMap.set(orderNo, {
+          ordersMap.set(mapKey, {
             orderNo: orderNo,
             date: formatExcelDate(row[2]),
             clientCode: String(row[20] || ''),
@@ -250,7 +277,7 @@ function App() {
           });
         }
 
-        const order = ordersMap.get(orderNo);
+        const order = ordersMap.get(mapKey);
 
         const groupKey = `${transformedEcountCode}_${rawYlwCode}`;
 
@@ -269,7 +296,7 @@ function App() {
       });
 
       // Map 객체를 Array 형태로 정리 및 카톤/낱량 계산
-      const processedOrders = Array.from(ordersMap.values()).map(order => {
+      const processedOrders = labelSplitOrders(Array.from(ordersMap.values()).map(order => {
         const itemList = Array.from(order.items.values())
           .map(it => {
             const c = it.cartonUnit > 0 ? Math.trunc(it.qty / it.cartonUnit) : 0;
@@ -290,7 +317,7 @@ function App() {
           ...order,
           itemList
         };
-      });
+      }));
 
       setOrders(processedOrders);
     };
@@ -312,19 +339,12 @@ function App() {
 
   // 구글시트("물류지원-전표출력") 물표 탭에 데이터를 채워 넣고, 시트에서 직접 인쇄하도록 함
   const handleGenerateSheet = async () => {
-    const webAppUrl = import.meta.env.VITE_SHEET_WEBAPP_URL;
-    if (!webAppUrl) {
-      setSheetGenState('error');
-      setSheetGenError('VITE_SHEET_WEBAPP_URL이 설정되지 않았습니다.');
-      return;
-    }
-
     setSheetGenState('loading');
     setSheetGenError('');
 
     const payload = {
       orders: orders.map(o => ({
-        orderNo: o.orderNo,
+        orderNo: o.label,
         clientName: o.clientName,
         recipient: o.recipient,
         contact: formatPhoneNumber(o.contact),
@@ -342,15 +362,7 @@ function App() {
     };
 
     try {
-      const res = await fetch(webAppUrl, {
-        method: 'POST',
-        // application/json은 브라우저가 사전 요청(OPTIONS)을 보내는데
-        // Apps Script 웹 앱은 이를 처리하지 못해 실패함. text/plain으로 우회.
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
+      const data = await postToSheet(payload);
       setSheetUrl(data.sheetUrl);
       setSheetGenState('done');
     } catch (err) {
@@ -361,26 +373,13 @@ function App() {
 
   // 품목별수량 데이터를 구글시트 "품목별수량" 탭에 쓰고, 그 탭으로 바로 이동
   const handleGenerateItemSummarySheet = async () => {
-    const webAppUrl = import.meta.env.VITE_SHEET_WEBAPP_URL;
-    if (!webAppUrl) {
-      setSummarySheetGenState('error');
-      setSummarySheetGenError('VITE_SHEET_WEBAPP_URL이 설정되지 않았습니다.');
-      return;
-    }
-
     setSummarySheetGenState('loading');
     setSummarySheetGenError('');
 
     const payload = { orders: [], itemSummary: toItemSummaryPayload(combinedRows) };
 
     try {
-      const res = await fetch(webAppUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
+      const data = await postToSheet(payload);
       setSummarySheetGenState('idle');
       window.open(data.sheetUrl, '_blank', 'noopener,noreferrer');
     } catch (err) {
@@ -454,7 +453,7 @@ function App() {
         allItems.push({
           ecountCode: item.ecountCode || '',
           younglimwonCode: item.younglimwonCode || '',
-          orderNo: order.orderNo,
+          orderNo: order.label,
           clientName: order.clientName,
           recipient: order.recipient,
           itemName: item.name,
@@ -500,6 +499,8 @@ function App() {
     return rows;
   }, [orders, itemSummary]);
 
+  const splitOrderNos = [...new Set(orders.filter(o => o.label !== o.orderNo).map(o => o.orderNo))];
+
   const resetData = () => {
     setOrders([]);
   };
@@ -544,6 +545,11 @@ function App() {
                 <p style={{ color: 'var(--text-secondary)', margin: 0 }}>처리된 총 주문 건수</p>
                 <div className="metric-value">{orders.length}</div>
                 <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>물표 인쇄 및 송장 발급이 준비되었습니다.</p>
+                {splitOrderNos.length > 0 && (
+                  <p style={{ color: '#dc2626', margin: '0.75rem 0 0', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                    ⚠ 판매No. 중복 감지 → 주소별로 물표 분리: {splitOrderNos.join(', ')}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -664,9 +670,9 @@ function App() {
               order.itemList.forEach((item, i) => { if (i < 37) rows[i] = item; });
 
               return (
-                <div key={order.orderNo} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box' }}>
+                <div key={order.label} className="print-page" style={{ height: '297mm', width: '210mm', padding: '15mm', boxSizing: 'border-box' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '15px', marginBottom: '10px' }}>
-                    <span>&lt;주문번호&gt;&nbsp;&nbsp;&nbsp;&nbsp;{order.orderNo}</span>
+                    <span>&lt;주문번호&gt;&nbsp;&nbsp;&nbsp;&nbsp;{order.label}</span>
                     <span className="print-page-number" style={{ fontSize: '11px', color: 'black' }}>{idx + 1}</span>
                   </div>
 
