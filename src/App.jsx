@@ -61,9 +61,6 @@ function getAutoColWidths(rows) {
   return widths.map(w => ({ wch: w + 2 }));
 }
 
-// gas/물표생성_WebApp.gs 의 GAS_VERSION과 같아야 함 (다르면 Apps Script '새 버전 배포' 누락)
-const GAS_VERSION = '2026-10-14';
-
 // 구글시트 Apps Script에 데이터 전송 (물표/품목별수량 공용)
 async function postToSheet(payload) {
   // Apps Script를 직접 부르지 않고 같은 도메인의 Vercel 함수(api/sheet.js)를 거침 (브라우저 CORS 차단 회피)
@@ -73,10 +70,6 @@ async function postToSheet(payload) {
     body: JSON.stringify(payload)
   });
   const data = await res.json();
-  if (data.version !== GAS_VERSION) {
-    alert(`구글시트 스크립트 버전이 다릅니다 (배포됨: ${data.version || '구버전'}, 필요: ${GAS_VERSION}).\n` +
-      `Apps Script에서 배포 > 배포 관리 > 새 버전으로 다시 배포해 주세요.`);
-  }
   if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
   return data;
 }

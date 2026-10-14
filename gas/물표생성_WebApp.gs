@@ -17,11 +17,8 @@
  * 기존 웹 앱 URL에 새 코드를 반영해야 함 (그냥 저장만 하면 실행 URL엔 반영 안 됨).
  *
  * ⚠ 이 파일의 원본은 GitHub 저장소(webapp/gas/)에 있음. 수정은 여기서 하고 Apps Script에 붙여넣기.
- *   수정할 때마다 GAS_VERSION을 올리고, 웹앱 src/App.jsx의 GAS_VERSION도 같은 값으로 맞출 것.
- *   (웹앱이 응답의 version을 비교해서 '새 버전 배포'를 잊으면 경고를 띄움)
+ * ⚠ 배포 액세스 권한은 반드시 "모든 사용자" ("Google 계정이 있는 모든 사용자"는 401로 실패)
  */
-
-const GAS_VERSION = '2026-10-14';
 
 const ORDER_SHEET_NAME = '물표';
 const PAGE_ROWS = 46;
@@ -196,7 +193,7 @@ function writeItemSummary(ss, itemSummary) {
 }
 
 function jsonResponse(obj) {
-  return ContentService.createTextOutput(JSON.stringify({ ...obj, version: GAS_VERSION })).setMimeType(
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
     ContentService.MimeType.JSON
   );
 }
