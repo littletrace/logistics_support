@@ -64,14 +64,11 @@ function getAutoColWidths(rows) {
 // gas/물표생성_WebApp.gs 의 GAS_VERSION과 같아야 함 (다르면 Apps Script '새 버전 배포' 누락)
 const GAS_VERSION = '2026-10-14';
 
-// 구글시트 Apps Script 웹앱에 데이터 전송 (물표/품목별수량 공용)
+// 구글시트 Apps Script에 데이터 전송 (물표/품목별수량 공용)
 async function postToSheet(payload) {
-  const webAppUrl = import.meta.env.VITE_SHEET_WEBAPP_URL;
-  if (!webAppUrl) throw new Error('VITE_SHEET_WEBAPP_URL이 설정되지 않았습니다.');
-  const res = await fetch(webAppUrl, {
+  // Apps Script를 직접 부르지 않고 같은 도메인의 Vercel 함수(api/sheet.js)를 거침 (브라우저 CORS 차단 회피)
+  const res = await fetch('/api/sheet', {
     method: 'POST',
-    // application/json은 브라우저가 사전 요청(OPTIONS)을 보내는데
-    // Apps Script 웹 앱은 이를 처리하지 못해 실패함. text/plain으로 우회.
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
   });
