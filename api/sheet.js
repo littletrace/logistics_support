@@ -1,5 +1,6 @@
 // 구글시트 Apps Script 프록시: 브라우저 → /api/sheet(같은 도메인) → Apps Script
 // 브라우저가 script.google.com을 직접 부르면 CORS로 막히는 경우가 있어 서버에서 대신 호출한다.
+// 실행 시간 상한은 vercel.json maxDuration(300초, Hobby 최대). 주문이 많으면 Apps Script 기록이 1분을 넘음.
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
   const url = process.env.VITE_SHEET_WEBAPP_URL;

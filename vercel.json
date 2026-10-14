@@ -11,7 +11,7 @@
   ],
   "functions": {
     "api/sheet.js": {
-      "maxDuration": 60
+      "maxDuration": 300
     }
   }
 }

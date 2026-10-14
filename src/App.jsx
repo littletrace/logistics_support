@@ -69,7 +69,14 @@ async function postToSheet(payload) {
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload)
   });
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // Vercel 함수 시간초과/오류 시 JSON이 아닌 오류 문구가 옴
+    throw new Error(`서버 응답 오류(${res.status}): ${text.slice(0, 100)}`);
+  }
   if (!data.ok) throw new Error(data.error || '알 수 없는 오류');
   return data;
 }
