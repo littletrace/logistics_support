@@ -621,11 +621,11 @@ function App() {
                     <th style={{ padding: '10px' }}>주문번호</th>
                     <th style={{ padding: '10px' }}>거래처</th>
                     <th style={{ padding: '10px' }}>수취인</th>
-                    <th style={{ padding: '10px', textAlign: 'left' }}>품목명</th>
+                    <th style={{ padding: '10px', textAlign: 'left', whiteSpace: 'normal', wordBreak: 'keep-all' }}>품목명</th>
                     <th style={{ padding: '10px' }}>수량</th>
                     <th style={{ padding: '10px' }}>카톤</th>
                     <th style={{ padding: '10px' }}>잔량</th>
-                    <th style={{ padding: '10px', background: '#f1f5f9' }}></th>
+                    <th style={{ padding: '10px', background: '#f1f5f9', whiteSpace: 'normal', wordBreak: 'keep-all' }}></th>
                     <th style={{ padding: '10px', background: '#f1f5f9' }}>수량</th>
                     <th style={{ padding: '10px', background: '#f1f5f9' }}>카톤</th>
                     <th style={{ padding: '10px', background: '#f1f5f9' }}>잔량</th>
@@ -639,11 +639,11 @@ function App() {
                       <td style={{ padding: '8px' }}>{row.orderNo}</td>
                       <td style={{ padding: '8px' }}>{row.clientName}</td>
                       <td style={{ padding: '8px' }}>{row.recipient}</td>
-                      <td style={{ padding: '8px', textAlign: 'left' }}>{row.itemName}</td>
+                      <td style={{ padding: '8px', textAlign: 'left', whiteSpace: 'normal', wordBreak: 'keep-all' }}>{row.itemName}</td>
                       <td style={{ padding: '8px' }}>{row.qty}</td>
                       <td style={{ padding: '8px' }}>{row.carton}</td>
                       <td style={{ padding: '8px' }}>{row.piece}</td>
-                      <td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', background: '#f8fafc' }}>{row.sumItemName}</td>
+                      <td style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold', background: '#f8fafc', whiteSpace: 'normal', wordBreak: 'keep-all' }}>{row.sumItemName}</td>
                       <td style={{ padding: '8px', fontWeight: 'bold', color: 'var(--accent)', background: '#f8fafc' }}>{row.sumQty}</td>
                       <td style={{ padding: '8px', fontWeight: 'bold', background: '#f8fafc' }}>{row.sumCarton}</td>
                       <td style={{ padding: '8px', fontWeight: 'bold', background: '#f8fafc' }}>{row.sumPiece}</td>
