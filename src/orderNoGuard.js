@@ -17,10 +17,3 @@ export function labelSplitOrders(orders) {
     return { ...o, label: `${o.orderNo} (분리 ${i}/${n})` };
   });
 }
-
-// 수량 → 카톤/잔량. 음수(반품) 수량은 카톤 0, 잔량 0 (품목별 합계에 넣지 않음)
-export function splitCarton(qty, unit) {
-  if (qty < 0) return { carton: 0, piece: 0 };
-  if (!(unit > 0)) return { carton: 0, piece: qty };
-  return { carton: Math.trunc(qty / unit), piece: qty % unit };
-}

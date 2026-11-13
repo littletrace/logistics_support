@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { UploadCloud, FileText, Download, Printer, RefreshCw, Database } from 'lucide-react';
 import './App.css';
-import { addrKey, labelSplitOrders, splitCarton } from './orderNoGuard';
+import { addrKey, labelSplitOrders } from './orderNoGuard';
 
 function formatExcelDate(val) {
   if (!val) return '';
@@ -296,7 +296,8 @@ function App() {
       const processedOrders = labelSplitOrders(Array.from(ordersMap.values()).map(order => {
         const itemList = Array.from(order.items.values())
           .map(it => {
-            const { carton: c, piece: p } = splitCarton(it.qty, it.cartonUnit);
+            const c = it.cartonUnit > 0 ? Math.trunc(it.qty / it.cartonUnit) : 0;
+            const p = it.cartonUnit > 0 ? it.qty % it.cartonUnit : it.qty;
             return {
               ecountCode: it.ecountCode,
               younglimwonCode: it.younglimwonCode,
@@ -433,8 +434,7 @@ function App() {
           });
         }
         const s = summary.get(key);
-        // 음수(반품) 수량은 품목별 합계에서 제외
-        if (item.qty > 0) s.qty += item.qty;
+        s.qty += item.qty;
         s.carton += item.carton;
         s.piece += item.piece;
       });
